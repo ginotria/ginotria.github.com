@@ -1,0 +1,90 @@
+$(function(){
+
+	var TweetModel = Backbone.Model.extend();
+	var TweetCollection = Backbone.Collection.extend(
+    {
+        model: TweetModel,
+        initialize: function() {
+
+        },
+        url: function () {
+return 'http://search.twitter.com/search.json?q=' + this.query + '&page=' + this.page + '&callback=?';
+        },
+        query: 'mmda',
+        page: 1,
+        parse: function(resp, xhr) {
+        	return resp.results;
+        }
+    });
+
+	var TweetController = Backbone.View.extend({
+		initialize: function() {
+			this.render();
+		},
+		render: function() {
+			this.template = _.template($('#tweet-view-pic').html());
+            var dict = this.model.toJSON();
+            var markup = this.template(dict);
+            this.el.innerHtml = markup;
+            return this;
+		}
+
+	});
+
+	var AppController = Backbone.View.extend({
+		events: {
+			"click .add-tweet": 'addTweet',
+			"submit .search-form": 'onSearch',
+			"click .search-button": 'onSearch'
+		},
+		addTweet: function() {
+			this.tweets.add({
+				'text': 'tweeeeeetaaahhhh',
+				'created_at': 'August 25, 2012'
+			});
+		},
+		initialize: function () {
+			this._tweetsView = [];
+			this.tweets = new TweetCollection();
+
+			//set event handlers
+			_.bindAll(this, 'onTweetAdd');
+			this.tweets.bind('add', this.onTweetAdd);
+		},
+
+		loadTweets: function () {
+			var that = this;
+			this.isLoading = true;
+			this.tweets.fetch({
+				add: that.onTweetAdd,
+				success: function (tweets) {
+					that.isLoading = false;
+				}
+			});
+
+		},
+
+		onTweetAdd: function(model) {
+			console.log('tweet added', model.get('text'));
+			var tweetController = new TweetController({
+				model: model
+			});
+
+			this._tweetsView.push(tweetController);
+			$(this.el).find('ul').append(tweetController.render().el.innerHtml);
+		},
+
+		onSearch: function() {
+			this.tweets.reset();
+			$(this.el).find('ul li').remove();
+			this.tweets.query = $('.search-input').val();
+			this.loadTweets();
+			return false;
+		}
+	});
+
+
+	var app = new AppController({
+		el: $('.twitter-feed')
+	});
+});
